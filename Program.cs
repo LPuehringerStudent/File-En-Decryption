@@ -8,39 +8,84 @@ class Program
     static void Main()
     {
         Console.WriteLine("|====================|");
-        Console.WriteLine("| FILE EN/DECRYPTION |");
+        Console.WriteLine("| MULTI-LAYER FILE OBFUSCATOR |");
         Console.WriteLine("|====================|");
         Console.WriteLine();
 
         bool encryptMode = GetEncryptionMode();
         string filePath = GetValidFilePath();
-        string password = GetPassword(encryptMode);
-        
 
         if (encryptMode)
         {
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine("WARNING: THIS WILL OVERWRITE THE FILE!");
-            Console.ResetColor();
-            if (!ConfirmAction("Proceed? (y/N): ")) 
-                Environment.Exit(0);
+            int layers = GetLayerCount();
+            string[] passwords = new string[layers];
+            
+            passwords[0] = GetFirstPassword();
+            
+            for (int i = 1; i < layers; i++)
+                passwords[i] = GeneratePassword();
 
-            ObfuscateFile(filePath, password, encrypt: true);
-            Console.WriteLine("File obfuscated (not securely encrypted!).");
+            string masterPassword = $"{layers}|{string.Join("|", passwords)}";
+            
+            ObfuscateFile(filePath, masterPassword, encrypt: true);
+            
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"\n🔑 MASTER PASSWORD (SAVE THIS!): {masterPassword}");
+            Console.ResetColor();
         }
         else
         {
-            ObfuscateFile(filePath, password, encrypt: false);
-            Console.WriteLine("File restored.");
+            string masterPassword = GetPassword("Enter MASTER password (format 'layers|pwd1|pwd2|...'): ");
+            ObfuscationResult result = ObfuscateFile(filePath, masterPassword, encrypt: false);
+            
+            if (result.Success)
+            {
+                Console.WriteLine("✅ File restored.");
+            }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"❌ {result.ErrorMessage}");
+                Console.ResetColor();
+            }
         }
     }
 
-    // --- Core Logic ---
-    static void ObfuscateFile(string path, string pwd, bool encrypt)
+    // ---- Core Logic ----
+    static ObfuscationResult ObfuscateFile(string path, string masterPassword, bool encrypt)
     {
-        string content = File.ReadAllText(path);
-        string transformedContent = TransformContent(content, pwd, encrypt);
-        File.WriteAllText(path, transformedContent);
+        try
+        {
+            string content = File.ReadAllText(path);
+            string[] parts = masterPassword.Split('|');
+            
+            if (!int.TryParse(parts[0], out int layers) || parts.Length != layers + 1)
+            {
+                return new ObfuscationResult(false, "Invalid master password format!");
+            }
+
+            string[] passwords = parts.Skip(1).ToArray();
+
+            if (encrypt)
+            {
+                // Apply each password in order
+                for (int i = 0; i < layers; i++)
+                    content = TransformContent(content, passwords[i], encrypt: true);
+            }
+            else
+            {
+                // Apply passwords in REVERSE order for decryption
+                for (int i = layers - 1; i >= 0; i--)
+                    content = TransformContent(content, passwords[i], encrypt: false);
+            }
+
+            File.WriteAllText(path, content);
+            return new ObfuscationResult(true);
+        }
+        catch (Exception ex)
+        {
+            return new ObfuscationResult(false, $"Error: {ex.Message}");
+        }
     }
 
     static string TransformContent(string input, string pwd, bool encrypt)
@@ -52,17 +97,20 @@ class Program
         {
             int pwdChar = pwd[pwdIndex % pwd.Length];
             int transformedChar = encrypt ? c + pwdChar : c - pwdChar;
-
-            // Ensure the character stays within valid UTF-16 range (0x0000-0xFFFF)
-            transformedChar = (transformedChar + 0x10000) % 0x10000;
+            
+            // Handle wrap-around for UTF-16
+            if (transformedChar < 0)
+                transformedChar += 0x10000;
+            else if (transformedChar >= 0x10000)
+                transformedChar -= 0x10000;
+                
             output.Append((char)transformedChar);
-
             pwdIndex++;
         }
         return output.ToString();
     }
 
-    // --- Helper Methods ---
+    // ---- Helpers ----
     static bool GetEncryptionMode()
     {
         while (true)
@@ -86,18 +134,36 @@ class Program
         }
     }
 
-    static string GetPassword(bool isEncrypt)
+    static int GetLayerCount()
     {
         while (true)
         {
-            Console.Write(isEncrypt ? "Password (or 'gen-pwd'): " : "Password: ");
-            string pwd = Console.ReadLine()?.Trim();
-            if (!string.IsNullOrEmpty(pwd))
-            {
-                if (pwd == "gen-pwd" && isEncrypt) 
-                    return GeneratePassword();
-                return pwd;
-            }
+            Console.Write("Layers (1-10): ");
+            if (int.TryParse(Console.ReadLine(), out int layers) && layers >= 1 && layers <= 10)
+                return layers;
+            Console.WriteLine("Invalid input. Use 1-10.");
+        }
+    }
+
+    static string GetFirstPassword()
+    {
+        while (true)
+        {
+            Console.Write("First password (or 'gen-pwd'): ");
+            string input = Console.ReadLine()?.Trim();
+            if (input == "gen-pwd") return GeneratePassword();
+            if (!string.IsNullOrEmpty(input)) return input;
+            Console.WriteLine("Password cannot be empty.");
+        }
+    }
+
+    static string GetPassword(string prompt)
+    {
+        while (true)
+        {
+            Console.Write(prompt);
+            string input = Console.ReadLine()?.Trim();
+            if (!string.IsNullOrEmpty(input)) return input;
             Console.WriteLine("Password cannot be empty.");
         }
     }
@@ -105,15 +171,22 @@ class Program
     static string GeneratePassword()
     {
         Random rand = new Random();
-        const string chars = "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
-        string pwd = new string(Enumerable.Repeat(chars, 12).Select(s => s[rand.Next(s.Length)]).ToArray());
-        Console.WriteLine($"Generated password: {pwd}");
-        return pwd;
+        const string chars = "!@#$%^&*()_+-=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        char[] pwd = new char[12];
+        for (int i = 0; i < pwd.Length; i++)
+            pwd[i] = chars[rand.Next(chars.Length)];
+        return new string(pwd);
     }
+}
 
-    static bool ConfirmAction(string prompt)
+class ObfuscationResult
+{
+    public bool Success { get; }
+    public string ErrorMessage { get; }
+
+    public ObfuscationResult(bool success, string errorMessage = "")
     {
-        Console.Write(prompt);
-        return Console.ReadLine()?.Trim().ToLower() == "y";
+        Success = success;
+        ErrorMessage = errorMessage;
     }
 }
