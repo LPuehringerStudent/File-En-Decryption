@@ -4,7 +4,7 @@ A console utility demonstrating a **multi-pass substitution cipher** for text fi
 
 **Disclaimer:** This tool is for **educational demonstration** of cipher chaining and key management concepts. It uses a basic Vigenère-like cipher and is **not suitable for protecting sensitive or mission-critical data.**
 
-***
+---
 
 ## Features & Mechanism
 
@@ -26,7 +26,7 @@ The program enforces a single **Master Password** format, which contains all nec
 layers|password_1|password_2|...|password_N
 ```
 
-***
+---
 
 ## Quick Start
 
@@ -56,5 +56,5 @@ Encrypt (en) or Decrypt (de)? en
 ...
 Layers (1-10): 3
 ...
-🔑 MASTER PASSWORD (SAVE THIS!): 3|MyCustomKey|&d4fP!xZ9kL2|Jm-aH+*rQp(7
+MASTER PASSWORD (SAVE THIS!): 3|MyCustomKey|&d4fP!xZ9kL2|Jm-aH+*rQp(7
 ```
