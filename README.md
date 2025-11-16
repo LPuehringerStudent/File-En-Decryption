@@ -1,12 +1,12 @@
-# 🔐 Multi-Layer File Obfuscator (C#)
+# Multi-Layer File Obfuscator (C#)
 
 A console utility demonstrating a **multi-pass substitution cipher** for text files. This program applies a simple, keyed character-shifting mechanism across multiple layers, requiring the successful reversal of each layer for decryption.
 
-⚠️ **Disclaimer:** This tool is for **educational demonstration** of cipher chaining and key management concepts. It uses a basic Vigenère-like cipher and is **not suitable for protecting sensitive or mission-critical data.**
+**Disclaimer:** This tool is for **educational demonstration** of cipher chaining and key management concepts. It uses a basic Vigenère-like cipher and is **not suitable for protecting sensitive or mission-critical data.**
 
 ***
 
-## ✨ Features & Mechanism
+## Features & Mechanism
 
 ### Core Logic
 The application uses the Unicode/ASCII value of each character in the file content and shifts it by the corresponding value of a character in the key (password), cycling through the key length.
@@ -28,7 +28,7 @@ layers|password_1|password_2|...|password_N
 
 ***
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 * .NET SDK (any modern version, e.g., .NET 8).
