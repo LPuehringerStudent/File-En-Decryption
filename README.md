@@ -13,7 +13,7 @@ The application uses the Unicode/ASCII value of each character in the file conte
 
 The fundamental operation is a character code addition/subtraction, handled with modulo arithmetic to manage wrap-around within the 16-bit character space ($0x10000$):
 $$
-\text{Transformed Char} = \text{Char} \pm \text{KeyChar} \pmod{0x10000}
+\text{Transformed Char} = \begin{cases} (c + \text{pwdChar}) \pmod{0x10000} & \text{for Encrypt} \\ (c - \text{pwdChar}) \pmod{0x10000} & \text{for Decrypt} \end{cases}
 $$
 
 ### Multi-Layer Chaining
